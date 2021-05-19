@@ -17,6 +17,7 @@ import MapboxGL, {
 import { BoxProps } from '@shopify/restyle'
 import { Platform, StyleProp } from 'react-native'
 import { omit } from 'lodash'
+import { Position } from 'geojson'
 import { Theme } from '../../../../theme/theme'
 import Box from '../../../../components/Box'
 import { DiscoveryResponse } from '../../../../store/discovery/discoveryTypes'
@@ -24,6 +25,7 @@ import { findBounds, hotspotsToFeatures } from '../../../../utils/mapUtils'
 import { useColors } from '../../../../theme/themeHooks'
 import { NetworkHotspot } from '../../../../store/networkHotspots/networkHotspotsSlice'
 import useVisible from '../../../../utils/useVisible'
+import H3Grid from '../../../../components/H3Grid'
 
 const styleURL = 'mapbox://styles/petermain/ckjtsfkfj0nay19o3f9jhft6v'
 
@@ -53,6 +55,7 @@ const DiscoveryMap = ({
   const cameraRef = useRef<MapboxGL.Camera>(null)
   const mapRef = useRef<MapboxGL.MapView>(null)
   const [mapLoaded, setMapLoaded] = useState(false)
+  const [mapBounds, setMapBounds] = useState<Position[]>()
   const visible = useVisible({
     onDisappear: () => {
       if (!isAndroid) return
@@ -140,6 +143,15 @@ const DiscoveryMap = ({
     [onSelect],
   )
 
+  const onRegionDidChange = useCallback(async () => {
+    // if (onMapMoved) {
+    //   const center = await map.current?.getCenter()
+    //   onMapMoved(center)
+    // }
+    const currentBounds = await mapRef.current?.getVisibleBounds()
+    setMapBounds(currentBounds)
+  }, [])
+
   const nearbyCircleFilter = useMemo(
     () => ['==', 'address', selectedHotspot?.address] as Expression,
     [selectedHotspot?.address],
@@ -156,11 +168,14 @@ const DiscoveryMap = ({
           ref={mapRef}
           style={styles.map}
           styleURL={styleURL}
+          onRegionDidChange={onRegionDidChange}
           logoEnabled={false}
           compassEnabled={false}
           onDidFinishLoadingMap={setupMap}
         >
           <MapboxGL.Camera ref={cameraRef} maxZoomLevel={12} />
+
+          <H3Grid bounds={mapBounds} visible />
 
           {shapeSources.nearbyHotspotMarker && (
             <MapboxGL.ShapeSource
